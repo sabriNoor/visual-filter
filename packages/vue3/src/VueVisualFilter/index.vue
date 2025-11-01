@@ -36,6 +36,9 @@ export default {
             ) &&
             Object.values(value.methods.nominal).every(
               (method) => typeof method === "function",
+            ) &&
+            Object.values(value.methods.date).every(
+              (method) => typeof method === "function",
             )
           )
         } catch {
@@ -63,6 +66,9 @@ export default {
     nominalMethodNames() {
       return Object.keys(this.filteringOptions.methods.nominal)
     },
+    dateMethodNames() {
+      return Object.keys(this.filteringOptions.methods.date)
+    },
   },
   watch: {
     filter: {
@@ -80,6 +86,13 @@ export default {
     },
   },
   methods: {
+    defaultMethodName(type) {
+      return {
+        [DataType.NUMERIC]: this.numericMethodNames[0] || "",
+        [DataType.NOMINAL]: this.nominalMethodNames[0] || "",
+        [DataType.DATE]: this.dateMethodNames[0] || "",
+      }[type] || ""
+    },
     updateConditionField(condition, newFieldName) {
       const {
         type: newType,
@@ -88,10 +101,7 @@ export default {
         (field) => field.name === newFieldName,
       )
       if (condition.dataType !== newType) {
-        condition.method =
-          (newType === DataType.NUMERIC
-            ? this.numericMethodNames[0]
-            : this.nominalMethodNames[0]) || ""
+        condition.method = this.defaultMethodName(newType)
         condition.argument = newSampleValue
         condition.dataType = newType
       }
@@ -114,10 +124,7 @@ export default {
           type: FilterType.CONDITION,
           fieldName: name,
           dataType: type,
-          method:
-            (type === DataType.NUMERIC
-              ? this.numericMethodNames[0]
-              : this.nominalMethodNames[0]) || "",
+          method: this.defaultMethodName(type),
           argument: sampleValue,
         })
       }
@@ -164,6 +171,7 @@ export default {
             fieldNames: this.fieldNames,
             numericMethodNames: this.numericMethodNames,
             nominalMethodNames: this.nominalMethodNames,
+            dateMethodNames: this.dateMethodNames,
             onUpdateField: this.updateConditionField,
             onDeleteCondition: this.deleteFilter,
           },

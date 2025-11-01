@@ -20,6 +20,11 @@ export default {
             type: "numeric",
             values: [3.72, 3.52, 3.4],
           },
+          {
+            name: "Enrollment Date",
+            type: "date",
+            values: ["2020-09-01", "2019-09-01", "2021-09-01"],
+          },
         ],
         methods: {
           numeric: {
@@ -44,6 +49,17 @@ export default {
               return cellValue.endsWith(argument)
             },
           },
+          date:{
+            before(cellValue, argument) {
+              return new Date(cellValue) < new Date(argument)
+            },
+            after(cellValue, argument) {
+              return new Date(cellValue) > new Date(argument)
+            },
+            on(cellValue, argument) {
+              return new Date(cellValue).toDateString() === new Date(argument).toDateString()
+            },
+          }
         },
       },
     }

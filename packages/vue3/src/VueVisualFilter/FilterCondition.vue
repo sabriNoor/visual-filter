@@ -24,10 +24,27 @@ export default {
       type: Array,
       required: true,
     },
+    dateMethodNames: {
+      type: Array,
+      required: true,
+    },
   },
   computed: {
     isNumeric() {
       return this.condition.dataType === DataType.NUMERIC
+    },
+    methodNames() {
+      if (this.condition.dataType === DataType.NUMERIC) {
+        return this.numericMethodNames
+      } else if (this.condition.dataType === DataType.NOMINAL) {
+        return this.nominalMethodNames
+      } else if (this.condition.dataType === DataType.DATE) {
+        return this.dateMethodNames
+      } else {
+        console.log("Unknown data type:", this.condition.dataType)
+        console.log("Available data types:", DataType)
+        return []
+      }
     },
   },
   methods: {
@@ -56,14 +73,13 @@ export default {
     <slot
       name="methodUpdation"
       v-bind="{
-        numericMethodNames: isNumeric && numericMethodNames,
-        nominalMethodNames: isNumeric || nominalMethodNames,
+        methodNames,
         condition,
       }"
     >
       <select v-model="condition.method" data-testId="method-select">
         <option
-          v-for="method in isNumeric ? numericMethodNames : nominalMethodNames"
+          v-for="method in methodNames"
           :key="method"
           :value="method"
         >
