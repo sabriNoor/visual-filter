@@ -15,6 +15,14 @@ export default {
   name: "VueVisualFilter",
   emits: ["filterUpdate"],
   props: {
+    filterValue: {
+      type: Object,
+      default: null,
+    },
+    resetFilterTrigger: {
+      type: Number,
+      default: 0,
+    },   
     filteringOptions: {
       type: Object,
       required: true,
@@ -46,11 +54,12 @@ export default {
   },
   data() {
     return {
-      filter: {
+      filter: this.filterValue ? deepCopy(this.filterValue) : {
         type: FilterType.GROUP,
         groupType: GroupType.AND,
         filters: [],
       },
+      isParentUpdate: true,
     }
   },
   computed: {
@@ -68,6 +77,10 @@ export default {
     filter: {
       deep: true,
       handler() {
+        if (this.isParentUpdate) {
+          return
+        }
+        console.log("emitting filter update from watcher")
         this.$emit("filterUpdate", {
           filter: deepCopy(this.filter),
           data: applyFilter(
@@ -77,6 +90,30 @@ export default {
           ),
         })
       },
+    },
+    filterValue: {
+      deep: true,
+      immediate: true,
+      handler(newFilter) {
+        if (newFilter) {
+          this.isParentUpdate = true
+          this.filter = deepCopy(newFilter)
+          this.$nextTick(() => { 
+           this.isParentUpdate = false 
+          })
+          
+        }
+      },
+    },
+    resetFilterTrigger: {
+      handler() {
+        this.filter = {
+          type: FilterType.GROUP,
+          groupType: GroupType.AND,
+          filters: [],
+        }
+      },
+      immediate: true,
     },
   },
   methods: {
@@ -135,7 +172,9 @@ export default {
         recursiveDeletion(this.filter)
       }
     },
+   
   },
+ 
   render() {
     const createVisualizer = (filter) => {
       if (filter.type === FilterType.GROUP) {
