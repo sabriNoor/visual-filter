@@ -4,10 +4,8 @@ export default {
   data() {
     return {
       currentFilter: null,
-      resetFilterTrigger: 0,
-      isInitialLoad: true,
-      undoStack: [],
-      redoStack: [],
+      canRedo: false,
+      canUndo: false,
       filteringOptions: {
         data: [
           {
@@ -63,15 +61,12 @@ export default {
   },
   methods: {
     captureFilterUpdate(ctx) {
-      const newFilterStr = JSON.stringify(ctx.filter)
-      const currentFilterStr = JSON.stringify(this.currentFilter)
-
-      if (newFilterStr !== currentFilterStr) {
-        this.undoStack.push(currentFilterStr)
-        if (this.undoStack.length > 20) this.undoStack.shift()
-        this.redoStack = []
+      this.canRedo = ctx.canRedo
+      this.canUndo = ctx.canUndo
+      if(ctx.action !== 'set'){
         this.currentFilter = ctx.filter
       }
+      console.log(`filter updated via ${ctx.action}:`, ctx.filter)
     },
     saveFilter() {
       if (!this.currentFilter) {
@@ -93,6 +88,7 @@ export default {
           try {
             const parsedFilter = JSON.parse(savedFilter)
             this.currentFilter = parsedFilter
+            this.$refs.filter.setFilter(parsedFilter)
           } catch (e) {
             console.warn("Failed to parse saved filter from URL:", e)
           }
@@ -100,20 +96,10 @@ export default {
       }
     },
     redoFilter(){
-      this.undoStack.push(this.currentFilter ? JSON.stringify(this.currentFilter) : null)
-      if (this.undoStack.length > 20) {
-        this.undoStack.shift()
-      }
-      const nextFilter = this.redoStack.pop()
-      this.currentFilter = nextFilter ? JSON.parse(nextFilter) : null
+      this.$refs.filter.redo()
     },
     undoFilter(){
-      this.redoStack.push(this.currentFilter ? JSON.stringify(this.currentFilter) : null)
-      if (this.redoStack.length > 20) {
-        this.redoStack.shift()
-      }
-      const previousFilter = this.undoStack.pop()
-      this.currentFilter = previousFilter ? JSON.parse(previousFilter) : null
+      this.$refs.filter.undo()
     },
     loadLastFilter(){
       const savedFilter = localStorage.getItem("lastFilter")
@@ -125,17 +111,16 @@ export default {
           console.warn("Failed to parse saved filter:", e)
         }
       }
+      this.$refs.filter.setFilter(this.currentFilter)
     },
     clearFilter(){
-      this.currentFilter = null
-      this.resetFilterTrigger += 1
-      localStorage.removeItem("lastFilter")
+      this.$refs.filter.clearFilter()
     },
+  
   },
 
   mounted(){
     this.loadLastFilter()
-
     this.loadSavedFilterFromUrl()
 
   }
@@ -144,14 +129,13 @@ export default {
 
 <template>
   <VueVisualFilter
+    ref="filter"
     :filtering-options="filteringOptions"
-    :filter-value="currentFilter"
-    :reset-filter-trigger="resetFilterTrigger"
     @filter-update="captureFilterUpdate"
   />
   <button @click="saveFilter">Save Filter</button>
   <button @click="clearFilter"> Clear Filter </button>
-  <button @click="undoFilter" :disabled="undoStack.length === 0"> Undo </button>
-  <button @click="redoFilter" :disabled="redoStack.length === 0"> Redo </button>
+  <button @click="undoFilter" :disabled="!canUndo"> Undo </button>
+  <button @click="redoFilter" :disabled="!canRedo"> Redo </button>
 
 </template>
