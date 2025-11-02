@@ -103,6 +103,11 @@ export default {
       if (condition.dataType !== newType) {
         condition.method = this.defaultMethodName(newType)
         condition.argument = newSampleValue
+        if(newType === DataType.DATE && condition.method === 'between') {
+          condition.argument2 = newSampleValue
+        } else {
+          delete condition.argument2
+        }
         condition.dataType = newType
       }
     },
@@ -119,6 +124,7 @@ export default {
           type,
           values: [sampleValue = ""],
         } = this.filteringOptions.data[0]
+
 
         filters.push({
           type: FilterType.CONDITION,
@@ -179,6 +185,7 @@ export default {
             fieldUpdation: this.$slots.fieldUpdation,
             methodUpdation: this.$slots.methodUpdation,
             argumentUpdation: this.$slots.argumentUpdation,
+            argumentExtra: this.$slots.argumentExtra,
             conditionDeletion: this.$slots.conditionDeletion,
           },
         )

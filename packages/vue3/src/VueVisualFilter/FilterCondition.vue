@@ -93,6 +93,16 @@ export default {
         v-model="condition.argument"
         data-testId="argument-input"
       />
+      
+    </slot>
+    <slot name="argumentExtra" :condition="condition">
+      <input
+        v-if="condition.dataType === 'date' && condition.method === 'between'"
+        type="text"
+        v-model="condition.argument2"
+        placeholder="and"
+        data-testId="argument2-input"
+      />
     </slot>
     <slot
       name="conditionDeletion"

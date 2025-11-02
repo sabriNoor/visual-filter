@@ -59,9 +59,13 @@ export default {
             on(cellValue, argument) {
               return new Date(cellValue).toDateString() === new Date(argument).toDateString()
             },
-          }
+            between(cellValue, argument1, argument2) {
+              const date = new Date(cellValue)
+              return date >= new Date(argument1) && date <= new Date(argument2)
+            }
+          },
         },
-      },
+      }
     }
   },
   methods: {
