@@ -44,6 +44,7 @@ export default {
       },
     },
   },
+
   data() {
     return {
       filter: {
@@ -51,8 +52,14 @@ export default {
         groupType: GroupType.AND,
         filters: [],
       },
+      undoStack: [],
+      redoStack: [],
+      maxStackSize: 20,
+      action: null,
+      prevFilterSnapshot: null,
     }
   },
+
   computed: {
     fieldNames() {
       return this.filteringOptions.data.map((field) => field.name)
@@ -63,23 +70,101 @@ export default {
     nominalMethodNames() {
       return Object.keys(this.filteringOptions.methods.nominal)
     },
+    canRedo() {
+      return this.redoStack.length > 0
+    },
+    canUndo() {
+      return this.undoStack.length > 0
+    },
   },
+
+  mounted() {
+    this.prevFilterSnapshot = deepCopy(this.filter)
+  },
+
   watch: {
     filter: {
       deep: true,
-      handler() {
-        this.$emit("filterUpdate", {
-          filter: deepCopy(this.filter),
-          data: applyFilter(
-            this.filter,
-            this.filteringOptions.methods,
-            deepCopy(this.filteringOptions.data),
-          ),
-        })
+      handler(newFilter) {
+        const newSnapshot = JSON.stringify(newFilter)
+        const oldSnapshot = JSON.stringify(this.prevFilterSnapshot)
+
+        if (newSnapshot !== oldSnapshot) {
+          this.pushToHistory(newFilter)
+          this.emitUpdate()
+        }
       },
     },
   },
+
   methods: {
+    pushToStack(stack, item) {
+      stack.push(item)
+      if (stack.length > this.maxStackSize) {
+        stack.shift()
+      }
+    },
+
+    pushToHistory(newFilter) {
+      this.pushToStack(this.undoStack, deepCopy(this.prevFilterSnapshot))
+      this.redoStack = []
+      this.prevFilterSnapshot = deepCopy(newFilter)
+    },
+
+    setFilter(newFilter) {
+      this.action = "set"
+      this.pushToHistory(newFilter)
+      this.filter = deepCopy(newFilter)
+      this.emitUpdate()
+    },
+
+    undo() {
+      if (!this.canUndo) return
+      this.action = "undo"
+      const prev = this.undoStack.pop()
+      this.pushToStack(this.redoStack, deepCopy(this.filter))
+      this.prevFilterSnapshot = deepCopy(prev)
+      this.filter = deepCopy(prev)
+      this.emitUpdate()
+    },
+
+    redo() {
+      if (!this.canRedo) return
+      this.action = "redo"
+      const next = this.redoStack.pop()
+      this.pushToStack(this.undoStack, deepCopy(this.filter))
+      this.prevFilterSnapshot = deepCopy(next)
+      this.filter = deepCopy(next)
+      this.emitUpdate()
+    },
+
+    clearFilter() {
+      this.action = "clear"
+      const newFilter = {
+        type: FilterType.GROUP,
+        groupType: GroupType.AND,
+        filters: [],
+      }
+      this.pushToHistory(newFilter)
+      this.filter = newFilter
+      this.emitUpdate()
+    },
+
+    emitUpdate() {
+      this.$emit("filterUpdate", {
+        filter: deepCopy(this.filter),
+        data: applyFilter(
+          this.filter,
+          this.filteringOptions.methods,
+          deepCopy(this.filteringOptions.data),
+        ),
+        action: this.action || "update",
+        canUndo: this.canUndo,
+        canRedo: this.canRedo,
+      })
+      this.action = null
+    },
+
     updateConditionField(condition, newFieldName) {
       const {
         type: newType,
@@ -96,7 +181,9 @@ export default {
         condition.dataType = newType
       }
     },
+
     addFilter(filters, newFilterType) {
+      this.action = "add"
       if (newFilterType === FilterType.GROUP) {
         filters.push({
           type: FilterType.GROUP,
@@ -122,12 +209,14 @@ export default {
         })
       }
     },
+
     deleteFilter(filterToDelete) {
-      function recursiveDeletion(filter, index, filters) {
+      this.action = "delete"
+      const recursiveDeletion = (filter, index, filters) => {
         if (filter === filterToDelete) {
           filters.splice(index, 1)
         } else if (filter.type === FilterType.GROUP) {
-          filter.filters.map(recursiveDeletion)
+          filter.filters.forEach(recursiveDeletion)
         }
       }
 
@@ -136,6 +225,7 @@ export default {
       }
     },
   },
+
   render() {
     const createVisualizer = (filter) => {
       if (filter.type === FilterType.GROUP) {
