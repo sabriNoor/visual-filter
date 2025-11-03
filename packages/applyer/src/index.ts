@@ -7,6 +7,13 @@ export = function applyFilter(filter: any, methods: any, data: any) {
         .find((field: any) => field.name === filter.fieldName)
         .values.map((value: any) => {
           try {
+            if(filter.method === 'between') {
+              return methods[filter.dataType][filter.method](
+                value,
+                filter.argument,
+                filter.argument2,
+              )
+            }
             return methods[filter.dataType][filter.method](
               value,
               filter.argument,
